@@ -1,0 +1,28 @@
+{
+  "name": "@trucking/driver",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0",
+    "base64-arraybuffer": "^1.0.2",
+    "expo": "~58.0.19",
+    "expo-crypto": "~58.0.7",
+    "expo-image-picker": "~58.0.10",
+    "expo-location": "~58.0.20",
+    "expo-sqlite": "~58.0.15",
+    "expo-status-bar": "~58.0.4",
+    "expo-task-manager": "~58.0.13",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-url-polyfill": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "typescript": "~6.0.3"
+  }
+}

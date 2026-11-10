@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Haulmark Driver",
+    "slug": "haulmark-driver",
+    "scheme": "haulmark",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.haulmark.driver",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "CAMERA"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.haulmark.driver",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "location"
+        ]
+      }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Share your location while on an assigned trip.",
+          "locationAlwaysAndWhenInUsePermission": "Share your location during an authorized trip, including when the app is in the background.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Take an attendance photo.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-sqlite",
+      "expo-status-bar"
+    ]
+  }
+}
