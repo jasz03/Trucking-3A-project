@@ -12,6 +12,7 @@ import {
   CalendarDays,
   Check,
   ClipboardList,
+  FileText,
   LayoutDashboard,
   LogOut,
   MapPinned,
@@ -24,10 +25,11 @@ import {
   X,
 } from "lucide-react";
 import { configured, supabase } from "./lib/supabase";
-import { freshness, manilaTime } from "./lib/time";
+import { freshness, manilaTime, manilaInputToUtc } from "./lib/time";
 import TrackingMap from "./TrackingMap";
 import AccessPanel from "./AccessPanel";
 import { ResetPassword, SignIn } from "./AuthScreen";
+import QuotationsPanel from "./QuotationsPanel";
 import type {
   Attendance,
   Driver,
@@ -41,6 +43,7 @@ import type {
 type Tab =
   | "overview"
   | "dispatch"
+  | "quotations"
   | "tracking"
   | "vehicles"
   | "drivers"
@@ -50,6 +53,7 @@ const staff = (role: Role, allowed: Role[]) => allowed.includes(role);
 const title: Record<Tab, string> = {
   overview: "Operations overview",
   dispatch: "Dispatch board",
+  quotations: "Quotations",
   tracking: "Live fleet",
   vehicles: "Vehicles",
   drivers: "Drivers",
@@ -59,6 +63,7 @@ const title: Record<Tab, string> = {
 const description: Record<Tab, string> = {
   overview: "A clear view of what is moving today.",
   dispatch: "Plan and follow every assignment.",
+  quotations: "Transparent route pricing and approvals.",
   tracking: "Latest reported locations, with honest timestamps.",
   vehicles: "The trucks your team can dispatch.",
   drivers: "People trusted with your fleet.",
@@ -233,6 +238,15 @@ function ConnectedApp() {
       ]),
     },
     {
+      id: "quotations",
+      icon: FileText,
+      show: staff(profile?.role ?? "driver", [
+        "owner",
+        "administrator",
+        "dispatcher",
+      ]),
+    },
+    {
       id: "tracking",
       icon: MapPinned,
       show: staff(profile?.role ?? "driver", [
@@ -344,7 +358,7 @@ function ConnectedApp() {
           p_customer: String(data.get("customer")).trim(),
           p_pickup: String(data.get("pickup")).trim(),
           p_destination: String(data.get("destination")).trim(),
-          p_scheduled_at: new Date(String(data.get("scheduled"))).toISOString(),
+          p_scheduled_at: manilaInputToUtc(String(data.get("scheduled"))),
           p_vehicle_id: data.get("vehicle"),
           p_driver_id: data.get("driver"),
           p_cargo: String(data.get("cargo")).trim(),
@@ -699,6 +713,17 @@ function ConnectedApp() {
                 }
               />
             </>
+          )}
+
+          {tab === "quotations" && (
+            <QuotationsPanel
+              role={profile.role}
+              vehicles={vehicles}
+              drivers={drivers}
+              profiles={profiles}
+              trips={trips}
+              onDispatch={() => setRefresh((value) => value + 1)}
+            />
           )}
 
           {tab === "tracking" && (

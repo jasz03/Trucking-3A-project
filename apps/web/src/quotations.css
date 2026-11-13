@@ -1,0 +1,337 @@
+.section-switch {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #dfe6de;
+}
+.section-switch button {
+  border: 0;
+  background: transparent;
+  color: #89988b;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 11px 17px 14px;
+  border-bottom: 3px solid transparent;
+}
+.section-switch button.active {
+  color: #20362b;
+  border-bottom-color: #e6ac4b;
+}
+.quote-intro {
+  background: #e9efe7;
+  border: 1px solid #dce6d9;
+  border-radius: 13px;
+  padding: 25px 28px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.quote-intro h2 {
+  font-size: 22px;
+  letter-spacing: -0.04em;
+  margin: 0 0 7px;
+}
+.quote-intro p {
+  font-size: 12px;
+  color: #718272;
+  max-width: 540px;
+  margin: 0;
+  line-height: 1.6;
+}
+.quote-intro .eyebrow {
+  display: block;
+  margin-bottom: 9px;
+}
+.quote-module .row-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.quote-disclaimer {
+  background: #fff5e5;
+  border: 1px solid #f2e1bd;
+  color: #94652d;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 0;
+}
+.quote-module .quote-active-label {
+  flex-direction: row;
+  align-items: center;
+}
+.quote-active-label input {
+  width: 18px;
+  min-height: 18px;
+  height: 18px;
+  margin: 0;
+}
+.quote-detail-modal {
+  width: min(820px, 100%);
+}
+.print-sheet {
+  padding: 28px;
+  color: #25372d;
+}
+.print-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border-bottom: 2px solid #1d3730;
+  padding-bottom: 21px;
+}
+.print-brand {
+  display: block;
+  min-width: 120px;
+  max-width: 280px;
+  color: #1b3830;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.print-head > div {
+  margin-left: auto;
+  text-align: right;
+}
+.print-head > div > span {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: #9b6c2f;
+  font-weight: 800;
+}
+.print-head h2 {
+  font-size: 23px;
+  margin: 6px 0 0;
+  letter-spacing: -0.04em;
+}
+.quote-facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin: 23px 0;
+}
+.quote-facts small,
+.quote-route small {
+  display: block;
+  font-size: 9px;
+  color: #8d9b90;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  margin-bottom: 7px;
+}
+.quote-facts strong,
+.quote-route strong {
+  font-size: 12px;
+  color: #263a2d;
+  line-height: 1.4;
+  display: block;
+  overflow-wrap: anywhere;
+}
+.quote-route {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 15px;
+  background: #f5f7f3;
+  padding: 17px 19px;
+  border-radius: 9px;
+}
+.quote-route svg {
+  color: #ad8b50;
+}
+.quote-cargo {
+  font-size: 11px;
+  color: #59695e;
+}
+.quote-breakdown {
+  border-top: 1px solid #dfe6dd;
+}
+.quote-line {
+  display: grid;
+  grid-template-columns: 1fr 125px 125px;
+  gap: 12px;
+  padding: 10px 5px;
+  border-bottom: 1px solid #edf1ea;
+  font-size: 11px;
+}
+.quote-line span:nth-child(n + 2) {
+  text-align: right;
+}
+.quote-line.heading {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: #8b998e;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.quote-line small {
+  display: block;
+  color: #a2ada3;
+  font-size: 9px;
+  margin-top: 3px;
+}
+.quote-totals {
+  margin: 20px 0 0 auto;
+  max-width: 350px;
+}
+.quote-totals > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  font-size: 11px;
+  color: #68766a;
+  padding: 5px 0;
+}
+.quote-totals strong {
+  color: #26372e;
+}
+.quote-totals .grand {
+  border-top: 2px solid #1b382f;
+  margin-top: 9px;
+  padding-top: 12px;
+  color: #1d3529;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.quote-totals .grand strong {
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+.print-note {
+  font-size: 10px;
+  line-height: 1.5;
+  color: #8b998d;
+  border-top: 1px solid #e1e9de;
+  padding-top: 15px;
+  margin-top: 28px;
+}
+.quote-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 9px;
+  border-top: 1px solid #e7ebe4;
+  padding: 18px 25px;
+}
+.quote-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.convert-panel {
+  background: #f5f8f3;
+  border-top: 1px solid #e3e9df;
+  padding: 19px 25px 25px;
+}
+.convert-panel h3 {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+.convert-panel p {
+  font-size: 11px;
+  color: #7d8d80;
+}
+.convert-row {
+  display: grid;
+  grid-template-columns: 25px 1fr 1fr;
+  gap: 9px;
+  align-items: center;
+  margin: 10px 0;
+}
+.convert-row > span {
+  color: #977543;
+  font-size: 11px;
+  font-weight: 800;
+}
+.convert-row select {
+  min-width: 0;
+  border: 1px solid #dce5da;
+  background: #fff;
+  border-radius: 7px;
+  padding: 10px;
+  font-size: 11px;
+}
+.convert-panel > .primary {
+  margin-top: 12px;
+}
+@media (max-width: 700px) {
+  .quote-intro {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .quote-line {
+    grid-template-columns: 1fr 82px 82px;
+  }
+  .quote-facts {
+    grid-template-columns: 1fr 1fr;
+  }
+  .quote-detail-modal {
+    max-height: 95vh;
+  }
+  .convert-row {
+    grid-template-columns: 25px 1fr;
+  }
+  .convert-row select:last-child {
+    grid-column: 2;
+  }
+  .print-sheet {
+    padding: 17px;
+  }
+  .print-brand {
+    min-width: 70px;
+    font-size: 12px;
+  }
+  .print-head h2 {
+    font-size: 18px;
+  }
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  .sidebar,
+  .topbar,
+  .content > :not(.quote-module),
+  .quote-module > :not(.modal-backdrop),
+  .quote-detail-modal > :not(.print-sheet) {
+    display: none !important;
+  }
+  .shell,
+  .main,
+  .content,
+  .quote-module,
+  .modal-backdrop,
+  .quote-detail-modal {
+    display: block;
+    position: static;
+    width: 100%;
+    min-height: 0;
+    max-height: none;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    box-shadow: none;
+    background: transparent;
+  }
+  .print-sheet {
+    position: static;
+    width: 100%;
+    padding: 0;
+    background: #fff;
+  }
+  .quote-line,
+  .quote-route,
+  .quote-facts,
+  .quote-totals {
+    break-inside: avoid;
+  }
+  .print-note {
+    margin-top: 25px;
+  }
+}

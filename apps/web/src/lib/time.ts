@@ -20,3 +20,7 @@ export function manilaTime(value: string): string {
     hour12: true,
   }).format(new Date(value));
 }
+
+export function manilaInputToUtc(value: string): string {
+  return new Date(`${value}+08:00`).toISOString();
+}

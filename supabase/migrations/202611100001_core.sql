@@ -270,7 +270,7 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('attendance-photos', 'attendance-photos', false, 5242880, array['image/jpeg','image/png','image/webp']);
 create policy attendance_photo_upload on storage.objects for insert to authenticated
   with check (bucket_id = 'attendance-photos' and (storage.foldername(name))[1] = (select auth.uid())::text
-    and name ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}\\.jpg$'
+    and name ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}[.]jpg$'
     and public.has_role(array['owner','administrator','fleet_manager','dispatcher','hr','driver']::public.app_role[]));
 create policy attendance_photo_read on storage.objects for select to authenticated
   using (bucket_id = 'attendance-photos' and public.has_role(array['owner','administrator','fleet_manager','dispatcher','hr','driver']::public.app_role[])

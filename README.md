@@ -1,6 +1,6 @@
 # Haulmark Operations
 
-An initial working slice of the trucking system in the attached brief: office dashboard, driver mobile app, and Supabase database. This phase covers sign-in, owner-controlled roles, truck and driver records, dispatch, trip status, authorized GPS reporting, and photo attendance with HR review. All screens use real backend records; no sample operational data is included.
+Working slices of the trucking system in the attached brief: office dashboard, driver mobile app, and Supabase database. The current source covers sign-in, owner-controlled roles, truck and driver records, dispatch, trip status, authorized GPS reporting, photo attendance with HR review, and transparent quotation pricing and approval. All screens use real backend records; no sample operational data is included.
 
 ## What is built
 
@@ -11,11 +11,12 @@ An initial working slice of the trucking system in the attached brief: office da
 | Dispatch | Create and view trips | View and advance assigned trip | Atomic dispatch RPC, unique active assignments |
 | Tracking | Latest location, map when configured, stale status | Start/stop sharing, background reporting | Active session and assignment required for each point |
 | Photo attendance | Review and view private photo | Camera/GPS capture and submission | Server timestamp, private bucket, idempotency key |
+| Quotations | Rate cards, draft/approval lifecycle, print-to-PDF, accepted quote to dispatch | — | Server calculation, price snapshot, atomic conversion |
 
 ## Local setup
 
 1. Install Node.js 24 and Docker Desktop if you want local Supabase. Run `npm install` from the repository root.
-2. Create a Supabase project. Apply [`supabase/migrations/202611100001_core.sql`](supabase/migrations/202611100001_core.sql) through the SQL Editor, or use the Supabase CLI with `npx supabase link --project-ref YOUR_REF` and `npx supabase db push`. The migration enables RLS and creates a private `attendance-photos` bucket.
+2. Create a Supabase project. Apply the SQL migrations in order: [`202611100001_core.sql`](supabase/migrations/202611100001_core.sql), then [`202611130001_quotations.sql`](supabase/migrations/202611130001_quotations.sql). Alternatively, use the Supabase CLI with `npx supabase link --project-ref YOUR_REF` and `npx supabase db push`. The core migration enables RLS and creates a private `attendance-photos` bucket.
 3. Create your first account in Supabase Authentication. In the SQL Editor, run the following with your real email to bootstrap the owner role:
 
    ```sql
@@ -23,9 +24,10 @@ An initial working slice of the trucking system in the attached brief: office da
    where id = (select id from auth.users where email = 'you@example.com');
    ```
 
-4. Copy `apps/web/.env.example` to `apps/web/.env.local`, and `apps/driver/.env.example` to `apps/driver/.env`. Add the Supabase project URL and **publishable/anon key**. Never put the service-role key in either app.
+4. Copy `apps/web/.env.example` to `apps/web/.env.local`, and `apps/driver/.env.example` to `apps/driver/.env`. Add the Supabase project URL and **publishable/anon key**. Set `VITE_COMPANY_NAME` to your actual business name before printing quotes. Never put the service-role key in either app.
 5. Run `npm run dev:web`. Sign in with the owner account. To invite users from the dashboard, deploy the `invite-user` function as described below.
 6. For the driver app, run `npm run start -w apps/driver`. Use an Expo **development build** on a physical device for background location. Expo Go does not support background location. Camera attendance also needs a real camera and location permission.
+7. In the dashboard, an owner or administrator adds a **Rate card** before a dispatcher creates a quote. Enter the distance and cost estimates, request approval, mark the customer response, then select available trucks and drivers to convert an accepted quote. The browser's **Print / save PDF** action is enabled only when `VITE_COMPANY_NAME` is set.
 
 ## Invite function
 
@@ -47,7 +49,7 @@ These limits and terms were checked on 10 November 2026. Review current terms be
 | Resource | Free test use | Important limit or condition |
 | --- | --- | --- |
 | [Supabase Free](https://supabase.com/pricing) | Auth, Postgres, private photo storage | 500 MB database, 1 GB files, 50,000 monthly active users, 5 GB egress; project pauses after a week of inactivity. Free projects do not include Pro's daily backups. |
-| [Cloudflare Pages Free](https://developers.cloudflare.com/pages/platform/limits/) | Static web dashboard | 500 builds/month. Set build command `npm run build:web`, output `apps/web/dist`, and the three `VITE_` variables in Pages settings. |
+| [Cloudflare Pages Free](https://developers.cloudflare.com/pages/platform/limits/) | Static web dashboard | 500 builds/month. Set build command `npm run build:web`, output `apps/web/dist`, and the `VITE_` variables in Pages settings. |
 | [Expo EAS Free](https://docs.expo.dev/billing/plans/) | Low-volume Android/iOS test builds and updates | Free low-priority builds are limited monthly. An Expo development build is required for background GPS. App store distribution and Apple signing may have separate costs. |
 | [MapTiler Free](https://www.maptiler.com/cloud/pricing/) | Test map tiles | Suitable for testing/R&D; its [terms](https://www.maptiler.com/terms/cloud/) limit free use to non-commercial use and R&D for commercial products. Set `VITE_MAP_TILE_URL` from your own key. |
 
@@ -58,7 +60,7 @@ Vercel Hobby is **not** recommended for a live trucking business: its [terms](ht
 - Repository root: this repository
 - Build command: `npm run build:web`
 - Output directory: `apps/web/dist`
-- Environment: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, optionally `VITE_MAP_TILE_URL`
+- Environment: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_COMPANY_NAME`, optionally `VITE_MAP_TILE_URL`
 - Rebuild after changing Vite variables; they are embedded in the static bundle.
 
 ### Driver build
@@ -85,4 +87,4 @@ The migration and Edge Function need a linked Supabase project for integration c
 
 Location and attendance records contain sensitive employee data. Before real use, publish an employee privacy notice, set a tracking purpose and retention period, decide photo and GPS deletion rules, configure backups, and review Philippine legal obligations with a qualified adviser. Device GPS and attendance photos are user-submitted evidence, not independently verified physical presence.
 
-Current limits: map routing, geocoding, geofences, hardware trackers, photo-attendance offline queue, payroll, quotations, billing, proof of delivery, and accounting are later phases. GPS has a bounded offline queue of the latest 1,000 points; an unresolved stop is retried when the app reconnects. See the [core design](docs/superpowers/specs/2026-11-10-core-operations-design.md) and [implementation plan](docs/superpowers/plans/2026-11-10-core-operations.md).
+Current limits: map routing, geocoding, geofences, hardware trackers, photo-attendance offline queue, payroll, billing, proof of delivery, and accounting are later phases. Quote distance and operating costs are explicitly manual estimates; no routing provider or customer email integration has been configured. GPS has a bounded offline queue of the latest 1,000 points; an unresolved stop is retried when the app reconnects. See the [core design](docs/superpowers/specs/2026-11-10-core-operations-design.md), [quotation design](docs/superpowers/specs/2026-11-13-quotations-design.md), and their plans.
