@@ -2,13 +2,13 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
 } from "react";
 import type { User } from "@supabase/supabase-js";
 import {
   Activity,
-  ArrowRight,
   CalendarDays,
   Check,
   ClipboardList,
@@ -30,6 +30,8 @@ import TrackingMap from "./TrackingMap";
 import AccessPanel from "./AccessPanel";
 import { ResetPassword, SignIn } from "./AuthScreen";
 import QuotationsPanel from "./QuotationsPanel";
+import { ThemeSwitch } from "./ThemeSwitch";
+import { WorkspaceOverview } from "./WorkspaceOverview";
 import type {
   Attendance,
   Driver,
@@ -50,6 +52,8 @@ type Tab =
   | "attendance"
   | "access";
 const staff = (role: Role, allowed: Role[]) => allowed.includes(role);
+const countLabel = (count: number, singular: string, plural = `${singular}s`) =>
+  `${count} ${count === 1 ? singular : plural}`;
 const title: Record<Tab, string> = {
   overview: "Operations overview",
   dispatch: "Dispatch board",
@@ -93,6 +97,9 @@ function ConnectedApp() {
   const [recovery, setRecovery] = useState(invitedFromUrl);
   const [tab, setTab] = useState<Tab>("overview");
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const closeMenuButton = useRef<HTMLButtonElement>(null);
+  const accountPopover = useRef<HTMLDivElement>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -100,6 +107,7 @@ function ConnectedApp() {
   const [points, setPoints] = useState<Point[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recordsLoaded, setRecordsLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -123,6 +131,7 @@ function ConnectedApp() {
     if (!user) {
       setProfile(null);
       setLoading(false);
+      setRecordsLoaded(false);
       return;
     }
     setLoading(true);
@@ -173,6 +182,7 @@ function ConnectedApp() {
     setTrips((results[3].data ?? []) as Trip[]);
     setPoints((results[4].data ?? []) as Point[]);
     setAttendance((results[5].data ?? []) as Attendance[]);
+    setRecordsLoaded(true);
   }, [client, profile]);
 
   useEffect(() => {
@@ -288,6 +298,37 @@ function ConnectedApp() {
       show: staff(profile?.role ?? "driver", ["owner", "administrator"]),
     },
   ];
+  const visibleNav = nav.filter((item) => item.show);
+  const pendingAttendance = attendance.filter((item) => item.review_status === "pending").length;
+  const closeMenu = useCallback(() => {
+    if (accountPopover.current?.matches(":popover-open")) accountPopover.current.hidePopover();
+    setMenuOpen(false);
+    menuButton.current?.focus();
+  }, []);
+  useEffect(() => {
+    if (!menuOpen) return;
+    closeMenuButton.current?.focus();
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeMenu();
+    };
+    window.addEventListener("keydown", dismiss);
+    return () => window.removeEventListener("keydown", dismiss);
+  }, [closeMenu, menuOpen]);
+  const openWorkspace = (id: Tab) => {
+    setTab(id);
+    if (menuOpen) closeMenu();
+    setError("");
+    window.scrollTo(0, 0);
+  };
+  const workspaceDetails: Record<Exclude<Tab, "overview">, string[]> = {
+    dispatch: [countLabel(activeTrips.length, "active trip"), "Assignments and trip history"],
+    quotations: ["Rate cards, route pricing and approvals"],
+    tracking: [countLabel(latestByVehicle.size, "truck with a location report", "trucks with location reports"), "Map and latest check-ins"],
+    vehicles: [`${countLabel(vehicles.length, "registered truck")}, ${availableVehicles.length} ready to assign`, "Truck records and availability"],
+    drivers: [countLabel(drivers.filter((item) => item.active).length, "active driver"), "Driver and license records"],
+    attendance: [countLabel(pendingAttendance, "record to review", "records to review"), "Photo attendance"],
+    access: ["Workspace roles and account status"],
+  };
 
   const act = async (
     run: () => PromiseLike<{ error: { message: string } | null }>,
@@ -371,6 +412,7 @@ function ConnectedApp() {
   if (!user)
     return (
       <SignIn
+        appearance={<ThemeSwitch />}
         onSubmit={async (email, password) => {
           const { error: issue } = await client.auth.signInWithPassword({
             email,
@@ -428,7 +470,7 @@ function ConnectedApp() {
 
   return (
     <div className="shell">
-      <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
+      <aside id="workspace-sidebar" className={`sidebar ${menuOpen ? "open" : ""}`}>
         <div className="brand">
           <span className="brand-icon">
             H<span>.</span>
@@ -439,7 +481,8 @@ function ConnectedApp() {
           </span>
           <button
             className="mobile-close icon-button"
-            onClick={() => setMenuOpen(false)}
+            ref={closeMenuButton}
+            onClick={closeMenu}
             aria-label="Close menu"
           >
             <X size={20} />
@@ -447,73 +490,66 @@ function ConnectedApp() {
         </div>
         <div className="workspace-label">Workspace</div>
         <nav aria-label="Main navigation">
-          {nav
-            .filter((item) => item.show)
-            .map(({ id, icon: Icon }) => (
+          {visibleNav.map(({ id, icon: Icon }) => (
               <button
                 key={id}
                 className={`nav-item ${tab === id ? "selected" : ""}`}
                 aria-label={title[id]}
                 aria-current={tab === id ? "page" : undefined}
                 title={title[id]}
-                onClick={() => {
-                  setTab(id);
-                  setMenuOpen(false);
-                  setError("");
-                }}
+                onClick={() => openWorkspace(id)}
               >
-                <Icon size={18} />
+                <Icon size={21} strokeWidth={1.65} />
                 <span>
                   {title[id].replace("Operations ", "").replace("Users & ", "")}
                 </span>
-                {id === "attendance" &&
-                  attendance.filter((item) => item.review_status === "pending")
-                    .length > 0 && (
-                    <em>
-                      {
-                        attendance.filter(
-                          (item) => item.review_status === "pending",
-                        ).length
-                      }
-                    </em>
-                  )}
+                {id === "attendance" && pendingAttendance > 0 && <em>{pendingAttendance}</em>}
               </button>
             ))}
         </nav>
         <div className="sidebar-bottom">
-          <div className="avatar">
-            {profile.full_name.charAt(0).toUpperCase() || "U"}
-          </div>
-          <div className="account">
-            <strong>{profile.full_name || user.email}</strong>
-            <span>{profile.role.replace("_", " ")}</span>
-          </div>
           <button
-            className="icon-button"
-            aria-label="Sign out"
-            title="Sign out"
-            onClick={() => void client.auth.signOut()}
+            type="button"
+            className="profile-trigger"
+            popoverTarget="workspace-profile"
+            aria-label="Open account menu"
+            title={profile.full_name || user.email}
           >
-            <LogOut size={18} />
+            <span className="avatar" aria-hidden="true">{profile.full_name.charAt(0).toUpperCase() || "U"}</span>
+            <span className="account">
+              <strong>{profile.full_name || user.email}</strong>
+              <span>{profile.role.replaceAll("_", " ")}</span>
+            </span>
           </button>
+          <div ref={accountPopover} id="workspace-profile" className="profile-popover" popover="auto" aria-label="Account">
+            <strong>{profile.full_name || user.email}</strong>
+            <span>{profile.role.replaceAll("_", " ")}</span>
+            <button type="button" className="secondary" onClick={() => void client.auth.signOut()}><LogOut size={16} /> Sign out</button>
+          </div>
         </div>
       </aside>
-      <main className="main">
+      <div className="main">
         <header className="topbar">
           <button
             className="mobile-menu icon-button"
+            ref={menuButton}
             aria-label="Open menu"
+            aria-expanded={menuOpen}
+            aria-controls="workspace-sidebar"
             onClick={() => setMenuOpen(true)}
           >
             <Menu size={21} />
           </button>
-          <span className="topbar-path">Haulmark <span className="topbar-divider">/</span> {title[tab]}</span>
+          <div className="topbar-path">
+            <span>Haulmark</span><span className="topbar-divider" aria-hidden="true">/</span><span>{title[tab]}</span>
+          </div>
           <div className="topbar-right">
             <span className="topbar-status">
               {tab === "overview" || tab === "tracking"
                 ? "Auto refresh: 15 seconds"
-                : "Data from Supabase"}
+                : `Signed in as ${profile.role.replaceAll("_", " ")}`}
             </span>
+            <ThemeSwitch />
             <button
               className="icon-button refresh"
               aria-label="Refresh data"
@@ -523,8 +559,8 @@ function ConnectedApp() {
             </button>
           </div>
         </header>
-        <div className="content">
-          <div className="page-heading">
+        <main aria-label="Page content" className={`content ${tab === "tracking" ? "fleet-content" : ""}`}>
+          {tab !== "overview" && <div className="page-heading">
             <div>
               <h1>{title[tab]}</h1>
               <p>{description[tab]}</p>
@@ -574,7 +610,7 @@ function ConnectedApp() {
                   </button>
                 )}
             </div>
-          </div>
+          </div>}
           {error && (
             <div className="alert error" role="alert">
               {error}
@@ -594,64 +630,25 @@ function ConnectedApp() {
           )}
 
           {tab === "overview" && (
-            <>
-              <div className="hero">
-                <div>
-                  <h2>Today’s fleet at a glance</h2>
-                  <p>Live dispatch records and driver activity, refreshed every 15 seconds.</p>
-                </div>
-                <button onClick={() => setTab("dispatch")}>
-                  Open dispatch board <ArrowRight size={17} />
-                </button>
-              </div>
-              <div className="stats">
-                <Stat
-                  label="Registered trucks"
-                  value={vehicles.length}
-                  detail={`${vehicles.filter((item) => item.status === "available").length} operational`}
-                  icon={Truck}
+            <WorkspaceOverview workspaces={visibleNav.flatMap(({ id, icon }) => id === "overview" ? [] : [{
+              id,
+              icon,
+              label: title[id],
+              details: recordsLoaded || !["dispatch", "tracking", "vehicles", "drivers", "attendance"].includes(id)
+                ? workspaceDetails[id] : workspaceDetails[id].slice(1),
+              open: () => openWorkspace(id),
+            }])}>
+              {!recordsLoaded ? (
+                <div className="recent-loading" role="status">Loading assignments…</div>
+              ) : activeTrips.length ? (
+                <TripTable
+                  trips={activeTrips.slice(0, 5)}
+                  plate={plate}
+                  profileName={profileName}
+                  hideHeading
                 />
-                <Stat
-                  label="Active trips"
-                  value={activeTrips.length}
-                  detail="Assigned or in progress"
-                  icon={Activity}
-                />
-                <Stat
-                  label="Drivers"
-                  value={drivers.filter((item) => item.active).length}
-                  detail="Active records"
-                  icon={Users}
-                />
-                <Stat
-                  label="Attendance to review"
-                  value={
-                    attendance.filter(
-                      (item) => item.review_status === "pending",
-                    ).length
-                  }
-                  detail="Pending HR action"
-                  icon={CalendarDays}
-                />
-              </div>
-              <div className="section-head">
-                <div>
-                  <h2>Current assignments</h2>
-                  <p>Trucks and drivers on active trips</p>
-                </div>
-                <button
-                  className="text-action"
-                  onClick={() => setTab("dispatch")}
-                >
-                  View all <ArrowRight size={16} />
-                </button>
-              </div>
-              <TripTable
-                trips={activeTrips.slice(0, 5)}
-                plate={plate}
-                profileName={profileName}
-              />
-            </>
+              ) : <Empty icon={Activity} message="No active assignments" detail="Assigned trips will appear here." />}
+            </WorkspaceOverview>
           )}
 
           {tab === "dispatch" && (
@@ -709,7 +706,7 @@ function ConnectedApp() {
           )}
 
           {tab === "tracking" && (
-            <>
+            <div className="fleet-workspace">
               <div className="map-panel">
                 <div className="map-panel-title">
                   <div>
@@ -726,13 +723,13 @@ function ConnectedApp() {
                   vehicles={vehicles}
                 />
               </div>
-              <div className="section-head">
-                <div>
-                  <h2>Latest check-ins</h2>
-                  <p>Stale data is always marked last known.</p>
+              <section className="tracking-list" aria-labelledby="latest-check-ins">
+                <div className="map-panel-title">
+                  <div>
+                    <h2 id="latest-check-ins">Latest check-ins</h2>
+                    <p>Older positions are marked last known.</p>
+                  </div>
                 </div>
-              </div>
-              <div className="tracking-list">
                 {vehicles.length === 0 ? (
                   <Empty
                     icon={MapPinned}
@@ -769,19 +766,17 @@ function ConnectedApp() {
                           >
                             {state}
                           </strong>
-                          <span>
-                            {point
-                              ? `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)} / ±${Math.round(point.accuracy_m)}m`
-                              : "No location reported"}
-                            {point ? ` / ${manilaTime(point.received_at)}` : ""}
-                          </span>
+                          {point ? <>
+                            <span>{point.latitude.toFixed(5)}, {point.longitude.toFixed(5)} / ±{Math.round(point.accuracy_m)}m</span>
+                            <span>{manilaTime(point.received_at)}</span>
+                          </> : <span>No location reported</span>}
                         </div>
                       </div>
                     );
                   })
                 )}
-              </div>
-            </>
+              </section>
+            </div>
           )}
 
           {tab === "vehicles" && (
@@ -821,7 +816,7 @@ function ConnectedApp() {
                           <td>
                             {item.capacity_kg
                               ? `${Number(item.capacity_kg).toLocaleString()} kg`
-                              : "—"}
+                              : "Not set"}
                           </td>
                           <td>
                             <Status
@@ -1133,14 +1128,14 @@ function ConnectedApp() {
               }
             />
           )}
-          <footer>Haulmark Operations / Asia/Manila / Connected Supabase data</footer>
-        </div>
-      </main>
+        </main>
+      </div>
       {menuOpen && (
         <button
           className="scrim"
+          tabIndex={-1}
           aria-label="Close menu"
-          onClick={() => setMenuOpen(false)}
+          onClick={closeMenu}
         />
       )}
       {form && (
@@ -1410,28 +1405,6 @@ function ConnectedApp() {
   );
 }
 
-function Stat({
-  label,
-  value,
-  detail,
-  icon: Icon,
-}: {
-  label: string;
-  value: number;
-  detail: string;
-  icon: typeof Truck;
-}) {
-  return (
-    <div className="stat">
-      <div className="stat-top">
-        <span>{label}</span>
-        <Icon size={18} />
-      </div>
-      <strong>{value.toLocaleString()}</strong>
-      <small>{detail}</small>
-    </div>
-  );
-}
 function Status({ value }: { value: string }) {
   return (
     <span className={`status ${value.replaceAll("_", "-")}`}>
@@ -1463,18 +1436,20 @@ function TripTable({
   plate,
   profileName,
   onCancel,
+  hideHeading = false,
 }: {
   trips: Trip[];
   plate: (id: string) => string;
   profileName: (id: string) => string;
   onCancel?: (trip: Trip) => void;
+  hideHeading?: boolean;
 }) {
   return (
-    <div className="panel">
-      <div className="panel-head">
+    <div className={`panel${hideHeading ? " recent-trips" : ""}`}>
+      {!hideHeading && <div className="panel-head">
         <h2>Trip register</h2>
         <span>{trips.length} shown</span>
-      </div>
+      </div>}
       {trips.length === 0 ? (
         <Empty
           icon={ClipboardList}
@@ -1483,7 +1458,7 @@ function TripTable({
         />
       ) : (
         <div className="table-wrap">
-          <table>
+          <table role="table" aria-label={hideHeading ? "Current assignments" : "Trip register"}>
             <thead>
               <tr>
                 <th>Truck / Driver</th>

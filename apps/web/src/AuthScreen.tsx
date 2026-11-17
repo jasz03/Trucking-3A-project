@@ -1,12 +1,14 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
 
 export function SignIn({
   onSubmit,
   onReset,
+  appearance,
 }: {
   onSubmit: (email: string, password: string) => Promise<void>;
   onReset: (email: string) => Promise<void>;
+  appearance: ReactNode;
 }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -47,7 +49,7 @@ export function SignIn({
   };
   return (
     <div className="signin">
-      <div className="signin-art">
+      <header className="signin-bar">
         <div className="brand">
           <span className="brand-icon">
             H<span>.</span>
@@ -57,24 +59,11 @@ export function SignIn({
             <small>Operations system</small>
           </span>
         </div>
-        <div className="signin-message">
-          <h1>
-            Every truck.
-            <br />
-            Every trip.
-            <br />
-            One clear view.
-          </h1>
-          <p>
-            Stay close to your fleet, your people, and the work that keeps
-            business moving.
-          </p>
-        </div>
-        <div className="signin-foot">Fleet management / Dispatch / Attendance</div>
-      </div>
-      <div className="signin-form-wrap">
+        {appearance}
+      </header>
+      <main className="signin-form-wrap">
         <form className="signin-form" onSubmit={submit}>
-          <h2>Welcome back</h2>
+          <h1>Sign in to Haulmark</h1>
           <p>Sign in to your operations dashboard.</p>
           {error && (
             <div className="alert error" role="alert">
@@ -122,7 +111,7 @@ export function SignIn({
           </button>
           <small>Accounts are created by your administrator.</small>
         </form>
-      </div>
+      </main>
     </div>
   );
 }

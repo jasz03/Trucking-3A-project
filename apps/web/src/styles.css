@@ -1,5 +1,5 @@
 :root {
-  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  font-family: "IBM Plex Mono", Consolas, monospace;
   color: #192226;
   background: #f5f6f2;
   font-synthesis: none;
@@ -337,7 +337,7 @@ p {
   font-weight: 750;
 }
 .hero h2 i {
-  font-family: Georgia, serif;
+  font-family: inherit;
   font-weight: 400;
   color: #eab451;
 }
@@ -990,7 +990,7 @@ textarea {
   margin: 23px 0;
 }
 .signin-message h1 i {
-  font-family: Georgia, serif;
+  font-family: inherit;
   font-weight: 400;
   color: #e5ae56;
 }
