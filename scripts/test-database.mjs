@@ -16,6 +16,7 @@ await db.exec(`
 `);
 await db.exec(readFileSync(new URL('../supabase/migrations/202611100001_core.sql', import.meta.url), 'utf8'));
 await db.exec(readFileSync(new URL('../supabase/migrations/202611130001_quotations.sql', import.meta.url), 'utf8'));
+await db.exec(readFileSync(new URL('../supabase/migrations/202611160001_map_quotations.sql', import.meta.url), 'utf8'));
 await db.exec(`
   grant usage on schema public, auth, storage to authenticated;
   grant select, insert on storage.objects to authenticated;
@@ -108,6 +109,18 @@ const quote = await as(owner, async () => {
   await db.query(`update public.rate_cards set rate_per_km = 40 where vehicle_type = '10-wheeler'`);
   assert.equal(Number((await db.query(`select total from public.quotations where id = $1`, [id])).rows[0].total), 10718.4, 'rate changes must not alter quote snapshots');
   return id;
+});
+await as(owner, async () => {
+  const values = ['Acme Logistics','Manila Port','Cavite Depot','10-wheeler',1,42.5,'2026-11-25T02:00:00Z','',0,0,0,0,0,0,0,0,14.59,120.97,14.48,120.89];
+  const sql = `select public.create_map_quotation(${Array.from({ length: 20 }, (_, i) => `$${i + 1}`).join(',')}) as id`;
+  const id = (await db.query(sql, values)).rows[0].id;
+  const saved = (await db.query(`select distance_source, pickup_lat, destination_lon, distance_km from public.quotations where id = $1`, [id])).rows[0];
+  assert.equal(saved.distance_source, 'map_estimate');
+  assert.equal(saved.pickup_lat, 14.59);
+  assert.equal(saved.destination_lon, 120.89);
+  assert.equal(Number(saved.distance_km), 42.5);
+  assert.equal((await db.query(`select basis from public.quotation_line_items where quotation_id = $1 and label = 'Distance'`, [id])).rows[0].basis, 'Geoapify truck road estimate');
+  await assert.rejects(db.query(sql, [...values.slice(0, 16), 91, ...values.slice(17)]), /Invalid map coordinates/i);
 });
 await as(driver, async () => await assert.rejects(db.query(`select public.transition_quotation($1,'approved')`, [quote]), /Not authorized|Invalid quote transition/i));
 await as(dispatcher, async () => {

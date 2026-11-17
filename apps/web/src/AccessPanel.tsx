@@ -59,9 +59,9 @@ export default function AccessPanel({
         <table>
           <thead>
             <tr>
-              <th>USER</th>
-              <th>ROLE</th>
-              <th>ACTIVE</th>
+              <th>User</th>
+              <th>Role</th>
+              <th>Active</th>
             </tr>
           </thead>
           <tbody>

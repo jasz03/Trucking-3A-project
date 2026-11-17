@@ -53,31 +53,27 @@ export function SignIn({
             H<span>.</span>
           </span>
           <span>
-            <strong>HAULMARK</strong>
-            <small>OPERATIONS SYSTEM</small>
+            <strong>Haulmark</strong>
+            <small>Operations system</small>
           </span>
         </div>
         <div className="signin-message">
-          <span>BUILT FOR THE ROAD AHEAD</span>
           <h1>
             Every truck.
             <br />
             Every trip.
             <br />
-            <i>One clear view.</i>
+            One clear view.
           </h1>
           <p>
             Stay close to your fleet, your people, and the work that keeps
             business moving.
           </p>
         </div>
-        <div className="signin-foot">
-          FLEET MANAGEMENT · DISPATCH · ATTENDANCE
-        </div>
+        <div className="signin-foot">Fleet management / Dispatch / Attendance</div>
       </div>
       <div className="signin-form-wrap">
         <form className="signin-form" onSubmit={submit}>
-          <div className="eyebrow">SECURE WORKSPACE</div>
           <h2>Welcome back</h2>
           <p>Sign in to your operations dashboard.</p>
           {error && (

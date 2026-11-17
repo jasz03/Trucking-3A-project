@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import type { Point, Trip, Vehicle } from "./types";
 import { freshness, manilaTime } from "./lib/time";
+import { mapTiles } from "./lib/maps";
 
 export default function TrackingMap({
   points,
@@ -15,20 +16,22 @@ export default function TrackingMap({
   const host = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const markers = useRef<L.LayerGroup | null>(null);
-  const tileUrl = import.meta.env.VITE_MAP_TILE_URL as string | undefined;
+  const [tileError, setTileError] = useState(false);
+  const tile = mapTiles(
+    import.meta.env.VITE_GEOAPIFY_KEY,
+    import.meta.env.VITE_MAP_TILE_URL,
+  );
 
   useEffect(() => {
-    if (!host.current || !tileUrl || map.current) return;
+    if (!host.current || map.current) return;
     const instance = L.map(host.current, { zoomControl: false }).setView(
       [12.8797, 121.774],
       6,
     );
     L.control.zoom({ position: "bottomright" }).addTo(instance);
-    L.tileLayer(tileUrl, {
-      attribution:
-        "&copy; OpenStreetMap contributors · Map tiles by configured provider",
-      maxZoom: 18,
-    }).addTo(instance);
+    L.tileLayer(tile.url, { attribution: tile.attribution, maxZoom: 18 })
+      .on("tileerror", () => setTileError(true))
+      .addTo(instance);
     map.current = instance;
     markers.current = L.layerGroup().addTo(instance);
     return () => {
@@ -36,7 +39,7 @@ export default function TrackingMap({
       map.current = null;
       markers.current = null;
     };
-  }, [tileUrl]);
+  }, [tile.url, tile.attribution]);
 
   useEffect(() => {
     if (!markers.current || !map.current) return;
@@ -70,21 +73,10 @@ export default function TrackingMap({
       });
   }, [points, trips, vehicles]);
 
-  if (!tileUrl)
-    return (
-      <div className="map-empty">
-        <strong>Map tiles not configured</strong>
-        <span>
-          Set VITE_MAP_TILE_URL for the test map. Live coordinates remain
-          visible below.
-        </span>
-      </div>
-    );
   return (
-    <div
-      className="map"
-      ref={host}
-      aria-label="Latest truck locations on map"
-    />
+    <div className="map-frame">
+      <div className="map" ref={host} aria-label="Latest truck locations on map" />
+      {tileError && <div className="map-service-error" role="alert">Map tiles could not load. Check your map key or network connection.</div>}
+    </div>
   );
 }

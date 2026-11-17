@@ -8,6 +8,9 @@ import {
 import { ArrowRight, Check, FileText, Plus, Printer, X } from "lucide-react";
 import { supabase } from "./lib/supabase";
 import { manilaTime, manilaInputToUtc } from "./lib/time";
+import { reverseAddress, roadRoute, searchAddress, type RoadRoute, type Stop } from "./lib/maps";
+import { quotePrice } from "./lib/quotePrice";
+import QuoteMap from "./QuoteMap";
 import type { Driver, Profile, Role, Trip, Vehicle } from "./types";
 import "./quotations.css";
 
@@ -31,7 +34,7 @@ type Quotation = {
   vehicle_type: string;
   truck_count: number;
   distance_km: number;
-  distance_source: "manual";
+  distance_source: "manual" | "map_estimate";
   base_charge: number;
   rate_per_km: number;
   margin_pct: number;
@@ -103,6 +106,22 @@ export default function QuotationsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const configuredMapKey = (import.meta.env.VITE_GEOAPIFY_KEY as string | undefined)?.trim() ?? "";
+  const mapKey = configuredMapKey.startsWith("YOUR_") ? "" : configuredMapKey;
+  const [pickupText, setPickupText] = useState("");
+  const [destinationText, setDestinationText] = useState("");
+  const [pickupStop, setPickupStop] = useState<Stop | null>(null);
+  const [destinationStop, setDestinationStop] = useState<Stop | null>(null);
+  const [searchSide, setSearchSide] = useState<"pickup" | "destination" | null>(null);
+  const [suggestions, setSuggestions] = useState<Stop[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [pinSide, setPinSide] = useState<"pickup" | "destination">("pickup");
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [route, setRoute] = useState<RoadRoute | null>(null);
+  const [routing, setRouting] = useState(false);
+  const [manualDistance, setManualDistance] = useState("");
+  const [draftValues, setDraftValues] = useState<Record<string, string>>({});
   const canApprove = role === "owner" || role === "administrator";
   const configuredCompanyName = (
     import.meta.env.VITE_COMPANY_NAME as string | undefined
@@ -138,6 +157,121 @@ export default function QuotationsPanel({
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    if (!creating || !mapKey || !searchSide) return;
+    const text = searchSide === "pickup" ? pickupText : destinationText;
+    if (text.trim().length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    const abort = new AbortController();
+    const timer = window.setTimeout(() => {
+      setSearching(true);
+      void searchAddress(text, mapKey, abort.signal)
+        .then(setSuggestions)
+        .catch((problem) => {
+          if (!abort.signal.aborted) setLocationError(problem instanceof Error ? problem.message : "Address search failed.");
+        })
+        .finally(() => { if (!abort.signal.aborted) setSearching(false); });
+    }, 500);
+    return () => { window.clearTimeout(timer); abort.abort(); };
+  }, [creating, mapKey, searchSide, pickupText, destinationText]);
+  useEffect(() => {
+    if (!creating || !mapKey || !pickupStop || !destinationStop) {
+      setRoute(null);
+      return;
+    }
+    const abort = new AbortController();
+    setRouting(true);
+    setRoute(null);
+    setLocationError("");
+    void roadRoute(pickupStop, destinationStop, mapKey, abort.signal)
+      .then(setRoute)
+      .catch((problem) => {
+        if (!abort.signal.aborted) setLocationError(problem instanceof Error ? problem.message : "Routing failed. Enter distance manually.");
+      })
+      .finally(() => { if (!abort.signal.aborted) setRouting(false); });
+    return () => abort.abort();
+  }, [creating, mapKey, pickupStop, destinationStop]);
+  const selectedRate = rates.find((rate) => rate.active && rate.vehicle_type === draftValues.type);
+  const distanceKm = route?.distanceKm ?? Number(manualDistance);
+  const estimate = selectedRate && quotePrice(
+    selectedRate,
+    distanceKm,
+    Number(draftValues.count ?? 1),
+    costs.map(([id]) => Number(draftValues[id] ?? 0)),
+    Number(draftValues.discount ?? 0),
+  );
+  const chooseStop = (side: "pickup" | "destination", stop: Stop) => {
+    if (side === "pickup") { setPickupStop(stop); setPickupText(stop.address); }
+    else { setDestinationStop(stop); setDestinationText(stop.address); }
+    setSearchSide(null);
+    setSuggestions([]);
+    setLocationError("");
+    setPinSide(side === "pickup" ? "destination" : "pickup");
+  };
+  const editAddress = (side: "pickup" | "destination", text: string) => {
+    if (side === "pickup") { setPickupText(text); setPickupStop(null); }
+    else { setDestinationText(text); setDestinationStop(null); }
+    setRoute(null);
+    setManualDistance("");
+    setSuggestions([]);
+    setSearchSide(side);
+    setLocationError("");
+  };
+  const pickOnMap = (lat: number, lon: number) => {
+    void (async () => {
+      setLocating(true);
+      setLocationError("");
+      try {
+        const stop = mapKey
+          ? await reverseAddress(lat, lon, mapKey)
+          : { address: `${lat.toFixed(5)}, ${lon.toFixed(5)}`, lat, lon };
+        chooseStop(pinSide, stop);
+        setManualDistance("");
+      } catch (problem) {
+        setLocationError(problem instanceof Error ? problem.message : "Could not identify that point.");
+      } finally {
+        setLocating(false);
+      }
+    })();
+  };
+  const addressField = (side: "pickup" | "destination") => {
+    const label = side === "pickup" ? "Pickup address" : "Destination address";
+    const value = side === "pickup" ? pickupText : destinationText;
+    return (
+      <div className="route-field">
+        <label>
+          {label}
+          <input
+            name={side === "pickup" ? "pickup" : "destination"}
+            value={value}
+            onChange={(event) => editAddress(side, event.target.value)}
+            onFocus={() => setSearchSide(side)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && suggestions[0] && searchSide === side) {
+                event.preventDefault();
+                chooseStop(side, suggestions[0]);
+              }
+            }}
+            autoComplete="off"
+            required
+            minLength={3}
+            aria-describedby={`${side}-hint`}
+          />
+        </label>
+        <small id={`${side}-hint`}>{(side === "pickup" ? pickupStop : destinationStop) ? "Location selected" : "Type an address and choose a result, or pin it on the map."}</small>
+        {searchSide === side && (searching || suggestions.length > 0) && (
+          <div className="address-results" role="listbox" aria-label={`${label} matches`}>
+            {searching && <span>Searching addresses…</span>}
+            {!searching && suggestions.map((stop) => (
+              <button key={`${stop.lat},${stop.lon}`} type="button" role="option" aria-selected="false" onClick={() => chooseStop(side, stop)}>{stop.address}</button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
   const run = async (
     task: () => PromiseLike<{ error: { message: string } | null }>,
     success: string,
@@ -191,29 +325,41 @@ export default function QuotationsPanel({
   };
   const saveQuote = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (mapKey && (!pickupStop || !destinationStop)) {
+      setLocationError("Choose a search result or pin both locations before saving.");
+      return;
+    }
     const data = new FormData(event.currentTarget);
+    const mapped = !!(route && pickupStop && destinationStop);
+    const args = {
+      p_customer: String(data.get("customer")).trim(),
+      p_pickup: String(data.get("pickup")).trim(),
+      p_destination: String(data.get("destination")).trim(),
+      p_vehicle_type: data.get("type"),
+      p_truck_count: Number(data.get("count")),
+      p_distance_km: distanceKm,
+      p_pickup_at: manilaInputToUtc(String(data.get("pickup_at"))),
+      p_cargo: String(data.get("cargo")).trim(),
+      p_fuel: Number(data.get("fuel")),
+      p_tolls: Number(data.get("tolls")),
+      p_labor: Number(data.get("labor")),
+      p_allowances: Number(data.get("allowances")),
+      p_loading: Number(data.get("loading")),
+      p_overnight: Number(data.get("overnight")),
+      p_other: Number(data.get("other")),
+      p_discount: Number(data.get("discount")),
+    };
     void (async () => {
       if (
         await run(
           () =>
-            client.rpc("create_quotation", {
-              p_customer: String(data.get("customer")).trim(),
-              p_pickup: String(data.get("pickup")).trim(),
-              p_destination: String(data.get("destination")).trim(),
-              p_vehicle_type: data.get("type"),
-              p_truck_count: Number(data.get("count")),
-              p_distance_km: Number(data.get("distance")),
-              p_pickup_at: manilaInputToUtc(String(data.get("pickup_at"))),
-              p_cargo: String(data.get("cargo")).trim(),
-              p_fuel: Number(data.get("fuel")),
-              p_tolls: Number(data.get("tolls")),
-              p_labor: Number(data.get("labor")),
-              p_allowances: Number(data.get("allowances")),
-              p_loading: Number(data.get("loading")),
-              p_overnight: Number(data.get("overnight")),
-              p_other: Number(data.get("other")),
-              p_discount: Number(data.get("discount")),
-            }),
+            client.rpc(mapped ? "create_map_quotation" : "create_quotation", mapped ? {
+              ...args,
+              p_pickup_lat: pickupStop!.lat,
+              p_pickup_lon: pickupStop!.lon,
+              p_destination_lat: destinationStop!.lat,
+              p_destination_lon: destinationStop!.lon,
+            } : args),
           "Quotation saved as draft.",
         )
       )
@@ -361,11 +507,11 @@ export default function QuotationsPanel({
             <table>
               <thead>
                 <tr>
-                  <th>TRUCK TYPE</th>
-                  <th>BASE</th>
-                  <th>PER KM</th>
-                  <th>MARGIN</th>
-                  <th>TAX</th>
+                  <th>Truck type</th>
+                  <th>Base</th>
+                  <th>Per km</th>
+                  <th>Margin</th>
+                  <th>Tax</th>
                   <th></th>
                 </tr>
               </thead>
@@ -398,17 +544,21 @@ export default function QuotationsPanel({
         <>
           <div className="quote-intro">
             <div>
-              <span className="eyebrow">PRICING DESK</span>
               <h2>Price every route with a clear breakdown.</h2>
               <p>
-                Distance, fuel, and tolls are manual estimates until a routing
-                provider is configured. Approval is required before a quote is
-                sent.
+                Choose pickup and delivery on the map to estimate road distance.
+                Rate cards calculate the price. Approval is required before a quote is sent.
               </p>
             </div>
             <button
               className="primary"
-              onClick={() => setCreating(true)}
+              onClick={() => {
+                setPickupText(""); setDestinationText("");
+                setPickupStop(null); setDestinationStop(null); setRoute(null);
+                setManualDistance(""); setDraftValues({}); setSuggestions([]);
+                setSearchSide(null); setPinSide("pickup"); setLocationError("");
+                setCreating(true);
+              }}
               disabled={!rates.some((rate) => rate.active)}
             >
               <Plus size={16} /> New quotation
@@ -438,11 +588,11 @@ export default function QuotationsPanel({
                 <table>
                   <thead>
                     <tr>
-                      <th>NUMBER / CUSTOMER</th>
-                      <th>ROUTE</th>
-                      <th>TRUCKS</th>
-                      <th>TOTAL</th>
-                      <th>STATUS</th>
+                      <th>Number / customer</th>
+                      <th>Route</th>
+                      <th>Trucks</th>
+                      <th>Total</th>
+                      <th>Status</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -467,7 +617,6 @@ export default function QuotationsPanel({
                           <span
                             className={`status ${quote.status.replaceAll("_", "-")}`}
                           >
-                            <span />
                             {quote.status.replaceAll("_", " ")}
                           </span>
                         </td>
@@ -499,7 +648,7 @@ export default function QuotationsPanel({
           }}
         >
           <div
-            className={`modal ${selected ? "quote-detail-modal" : ""}`}
+            className={`modal ${selected ? "quote-detail-modal" : creating ? "quote-create-modal" : ""}`}
             role="dialog"
             aria-modal="true"
             aria-label={
@@ -516,8 +665,8 @@ export default function QuotationsPanel({
                   {selected
                     ? selected.quotation_number
                     : editingRate
-                      ? "PRICING SETTINGS"
-                      : "NEW QUOTATION"}
+                      ? "Pricing settings"
+                      : "New quotation"}
                 </div>
                 <h2>
                   {selected
@@ -617,19 +766,30 @@ export default function QuotationsPanel({
               </form>
             )}
             {creating && (
-              <form className="form-grid" onSubmit={saveQuote}>
+              <form className="form-grid" onSubmit={saveQuote} onChange={(event) => {
+                const target = event.target;
+                if ((target instanceof HTMLInputElement || target instanceof HTMLSelectElement) && target.name)
+                  setDraftValues((current) => ({ ...current, [target.name]: target.value }));
+              }}>
                 <label className="wide">
                   Customer
                   <input name="customer" required minLength={2} />
                 </label>
-                <label>
-                  Pickup address
-                  <input name="pickup" required minLength={3} />
-                </label>
-                <label>
-                  Destination address
-                  <input name="destination" required minLength={3} />
-                </label>
+                {addressField("pickup")}
+                {addressField("destination")}
+                <div className="wide quote-map-picker">
+                  <div className="quote-map-toolbar">
+                    <strong>Pin a location</strong>
+                    <div role="group" aria-label="Location to pin">
+                      <button type="button" className={pinSide === "pickup" ? "active" : ""} onClick={() => setPinSide("pickup")}>Pickup</button>
+                      <button type="button" className={pinSide === "destination" ? "active" : ""} onClick={() => setPinSide("destination")}>Destination</button>
+                    </div>
+                  </div>
+                  <QuoteMap pickup={pickupStop} destination={destinationStop} route={route} onPick={pickOnMap} />
+                  <small>Click the map to set the selected point. {locating && "Finding address…"}</small>
+                  {!mapKey && <p className="quote-map-notice">Add VITE_GEOAPIFY_KEY for address search and automatic road distance. You can still pin a map point and enter distance manually.</p>}
+                  {locationError && <p className="quote-map-notice" role="alert">{locationError}</p>}
+                </div>
                 <label>
                   Truck type
                   <select name="type" required defaultValue="">
@@ -664,6 +824,9 @@ export default function QuotationsPanel({
                     min="0.01"
                     step="0.01"
                     required
+                    value={route ? route.distanceKm : manualDistance}
+                    onChange={(event) => setManualDistance(event.target.value)}
+                    readOnly={!!route}
                   />
                 </label>
                 <label>
@@ -671,8 +834,9 @@ export default function QuotationsPanel({
                   <input name="pickup_at" type="datetime-local" required />
                 </label>
                 <p className="quote-disclaimer wide">
-                  Distance is entered manually. It has not been verified by a
-                  routing provider.
+                  {routing ? "Calculating truck road distance…" : route
+                    ? "Truck road distance from Geoapify. Review the route, fuel, and toll estimates before approval."
+                    : "Enter road distance manually if routing is unavailable."}
                 </p>
                 <label className="wide">
                   Cargo details
@@ -702,11 +866,16 @@ export default function QuotationsPanel({
                     defaultValue="0"
                   />
                 </label>
+                {estimate && <div className="wide quote-estimate" role="status">
+                  <span>Estimated quote from {selectedRate?.vehicle_type} rate card · {distanceKm.toFixed(2)} km</span>
+                  <strong>{money(estimate.total)}</strong>
+                  <small>Final amount is calculated again by the database when saved.</small>
+                </div>}
                 <div className="form-actions">
                   <button type="button" className="secondary" onClick={close}>
                     Cancel
                   </button>
-                  <button className="primary" disabled={busy}>
+                  <button className="primary" disabled={busy || routing || locating}>
                     Calculate & save draft
                   </button>
                 </div>
@@ -717,53 +886,52 @@ export default function QuotationsPanel({
                 <div className="print-sheet">
                   <div className="print-head">
                     <span className="print-brand">
-                      {companyName || "COMPANY NAME REQUIRED"}
+                      {companyName || "Company name required"}
                     </span>
                     <div>
-                      <span>TRUCKING QUOTATION</span>
                       <h2>{selected.quotation_number}</h2>
                     </div>
                   </div>
                   <div className="quote-facts">
                     <div>
-                      <small>PREPARED FOR</small>
+                      <small>Prepared for</small>
                       <strong>{selected.customer_name}</strong>
                     </div>
                     <div>
-                      <small>CREATED</small>
+                      <small>Created</small>
                       <strong>{manilaTime(selected.created_at)}</strong>
                     </div>
                     <div>
-                      <small>STATUS</small>
+                      <small>Status</small>
                       <strong>{selected.status.replaceAll("_", " ")}</strong>
                     </div>
                   </div>
                   <div className="quote-route">
                     <div>
-                      <small>POINT A · PICKUP</small>
+                      <small>Pickup</small>
                       <strong>{selected.pickup_address}</strong>
                     </div>
                     <ArrowRight size={20} />
                     <div>
-                      <small>POINT B · DELIVERY</small>
+                      <small>Delivery</small>
                       <strong>{selected.destination_address}</strong>
                     </div>
                   </div>
                   <div className="quote-facts">
                     <div>
-                      <small>PICKUP SCHEDULE</small>
+                      <small>Pickup schedule</small>
                       <strong>{manilaTime(selected.pickup_at)}</strong>
                     </div>
                     <div>
-                      <small>VEHICLES</small>
+                      <small>Vehicles</small>
                       <strong>
                         {selected.truck_count} × {selected.vehicle_type}
                       </strong>
                     </div>
                     <div>
-                      <small>DISTANCE</small>
+                      <small>Distance</small>
                       <strong>
-                        {selected.distance_km} km · manual estimate
+                        {selected.distance_km} km / {selected.distance_source === "map_estimate" ? "truck road estimate" : "manual estimate"}
                       </strong>
                     </div>
                   </div>
@@ -807,7 +975,7 @@ export default function QuotationsPanel({
                       <strong>−{money(selected.discount_amount)}</strong>
                     </div>
                     <div className="grand">
-                      <span>QUOTED PRICE</span>
+                      <span>Quoted price</span>
                       <strong>{money(selected.total)}</strong>
                     </div>
                   </div>

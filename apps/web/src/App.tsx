@@ -24,7 +24,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { configured, supabase } from "./lib/supabase";
+import { configured, invitedFromUrl, supabase } from "./lib/supabase";
 import { freshness, manilaTime, manilaInputToUtc } from "./lib/time";
 import TrackingMap from "./TrackingMap";
 import AccessPanel from "./AccessPanel";
@@ -90,7 +90,7 @@ function ConnectedApp() {
   const client = supabase!;
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [recovery, setRecovery] = useState(false);
+  const [recovery, setRecovery] = useState(invitedFromUrl);
   const [tab, setTab] = useState<Tab>("overview");
   const [menuOpen, setMenuOpen] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -377,6 +377,7 @@ function ConnectedApp() {
             password,
           });
           if (issue) throw issue;
+          setRecovery(false);
         }}
         onReset={async (email) => {
           const { error: issue } = await client.auth.resetPasswordForEmail(
@@ -394,6 +395,7 @@ function ConnectedApp() {
           const { error: issue } = await client.auth.updateUser({ password });
           if (issue) throw issue;
           setRecovery(false);
+          window.history.replaceState(null, "", window.location.pathname);
         }}
       />
     );
@@ -432,8 +434,8 @@ function ConnectedApp() {
             H<span>.</span>
           </span>
           <span>
-            <strong>HAULMARK</strong>
-            <small>OPERATIONS SYSTEM</small>
+            <strong>Haulmark</strong>
+            <small>Operations system</small>
           </span>
           <button
             className="mobile-close icon-button"
@@ -443,9 +445,7 @@ function ConnectedApp() {
             <X size={20} />
           </button>
         </div>
-        <div className="workspace-label">
-          WORKSPACE <span>01</span>
-        </div>
+        <div className="workspace-label">Workspace</div>
         <nav aria-label="Main navigation">
           {nav
             .filter((item) => item.show)
@@ -453,6 +453,9 @@ function ConnectedApp() {
               <button
                 key={id}
                 className={`nav-item ${tab === id ? "selected" : ""}`}
+                aria-label={title[id]}
+                aria-current={tab === id ? "page" : undefined}
+                title={title[id]}
                 onClick={() => {
                   setTab(id);
                   setMenuOpen(false);
@@ -504,12 +507,13 @@ function ConnectedApp() {
           >
             <Menu size={21} />
           </button>
-          <span>
-            FLEET OPERATIONS <span className="topbar-divider">/</span>{" "}
-            {title[tab].toUpperCase()}
-          </span>
+          <span className="topbar-path">Haulmark <span className="topbar-divider">/</span> {title[tab]}</span>
           <div className="topbar-right">
-            <span className="online-dot" /> SYSTEM READY{" "}
+            <span className="topbar-status">
+              {tab === "overview" || tab === "tracking"
+                ? "Auto refresh: 15 seconds"
+                : "Data from Supabase"}
+            </span>
             <button
               className="icon-button refresh"
               aria-label="Refresh data"
@@ -522,7 +526,6 @@ function ConnectedApp() {
         <div className="content">
           <div className="page-heading">
             <div>
-              <div className="eyebrow">HAULMARK / {tab.toUpperCase()}</div>
               <h1>{title[tab]}</h1>
               <p>{description[tab]}</p>
             </div>
@@ -594,52 +597,34 @@ function ConnectedApp() {
             <>
               <div className="hero">
                 <div>
-                  <div className="hero-label">
-                    <span className="pulse" /> LIVE OPERATIONS
-                  </div>
-                  <h2>
-                    Keep the whole fleet
-                    <br />
-                    <i>in motion.</i>
-                  </h2>
-                  <p>
-                    Real records from your dispatch and driver activity. Updated
-                    every 15 seconds while this page is open.
-                  </p>
-                  <button onClick={() => setTab("dispatch")}>
-                    Open dispatch board <ArrowRight size={17} />
-                  </button>
+                  <h2>Today’s fleet at a glance</h2>
+                  <p>Live dispatch records and driver activity, refreshed every 15 seconds.</p>
                 </div>
-                <div className="hero-graphic">
-                  <div className="radar r1" />
-                  <div className="radar r2" />
-                  <div className="radar r3" />
-                  <div className="hero-truck">
-                    <Truck size={44} strokeWidth={1.4} />
-                  </div>
-                </div>
+                <button onClick={() => setTab("dispatch")}>
+                  Open dispatch board <ArrowRight size={17} />
+                </button>
               </div>
               <div className="stats">
                 <Stat
-                  label="REGISTERED TRUCKS"
+                  label="Registered trucks"
                   value={vehicles.length}
                   detail={`${vehicles.filter((item) => item.status === "available").length} operational`}
                   icon={Truck}
                 />
                 <Stat
-                  label="ACTIVE TRIPS"
+                  label="Active trips"
                   value={activeTrips.length}
                   detail="Assigned or in progress"
                   icon={Activity}
                 />
                 <Stat
-                  label="DRIVERS"
+                  label="Drivers"
                   value={drivers.filter((item) => item.active).length}
                   detail="Active records"
                   icon={Users}
                 />
                 <Stat
-                  label="ATTENDANCE TO REVIEW"
+                  label="Attendance to review"
                   value={
                     attendance.filter(
                       (item) => item.review_status === "pending",
@@ -673,18 +658,15 @@ function ConnectedApp() {
             <>
               <div className="summary-row">
                 <span>
-                  <span className="mini-dot amber" />
                   {activeTrips.length} active
                 </span>
                 <span>
-                  <span className="mini-dot green" />
                   {
                     trips.filter((item) => item.status === "completed").length
                   }{" "}
                   completed
                 </span>
                 <span>
-                  <span className="mini-dot gray" />
                   {availableVehicles.length} trucks available
                 </span>
               </div>
@@ -735,7 +717,7 @@ function ConnectedApp() {
                     <p>Only driver-submitted points appear here.</p>
                   </div>
                   <span className="live-badge">
-                    <span className="pulse" /> Refreshes every 15s
+                    Refreshes every 15s
                   </span>
                 </div>
                 <TrackingMap
@@ -777,7 +759,7 @@ function ConnectedApp() {
                           <strong>{vehicle.plate_number}</strong>
                           <span>
                             {trip
-                              ? `${profileName(trip.driver_id)} · ${trip.destination_address}`
+                              ? `${profileName(trip.driver_id)} / ${trip.destination_address}`
                               : vehicle.status}
                           </span>
                         </div>
@@ -789,9 +771,9 @@ function ConnectedApp() {
                           </strong>
                           <span>
                             {point
-                              ? `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)} · ±${Math.round(point.accuracy_m)}m`
+                              ? `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)} / ±${Math.round(point.accuracy_m)}m`
                               : "No location reported"}
-                            {point ? ` · ${manilaTime(point.received_at)}` : ""}
+                            {point ? ` / ${manilaTime(point.received_at)}` : ""}
                           </span>
                         </div>
                       </div>
@@ -819,10 +801,10 @@ function ConnectedApp() {
                   <table>
                     <thead>
                       <tr>
-                        <th>PLATE NUMBER</th>
-                        <th>VEHICLE</th>
-                        <th>CAPACITY</th>
-                        <th>AVAILABILITY</th>
+                        <th>Plate number</th>
+                        <th>Vehicle</th>
+                        <th>Capacity</th>
+                        <th>Availability</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -925,10 +907,10 @@ function ConnectedApp() {
                   <table>
                     <thead>
                       <tr>
-                        <th>DRIVER</th>
-                        <th>LICENSE</th>
-                        <th>EXPIRY</th>
-                        <th>STATUS</th>
+                        <th>Driver</th>
+                        <th>License</th>
+                        <th>Expiry</th>
+                        <th>Status</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -1021,12 +1003,12 @@ function ConnectedApp() {
                   <table>
                     <thead>
                       <tr>
-                        <th>EMPLOYEE</th>
-                        <th>TYPE</th>
-                        <th>RECEIVED IN MANILA</th>
-                        <th>LOCATION</th>
-                        <th>REVIEW</th>
-                        <th>PHOTO</th>
+                        <th>Employee</th>
+                        <th>Type</th>
+                        <th>Received in Manila</th>
+                        <th>Location</th>
+                        <th>Review</th>
+                        <th>Photo</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1151,10 +1133,7 @@ function ConnectedApp() {
               }
             />
           )}
-          <footer>
-            HAULMARK OPERATIONS · ASIA/MANILA · DATA FROM YOUR CONNECTED
-            SUPABASE PROJECT
-          </footer>
+          <footer>Haulmark Operations / Asia/Manila / Connected Supabase data</footer>
         </div>
       </main>
       {menuOpen && (
@@ -1189,11 +1168,6 @@ function ConnectedApp() {
           >
             <div className="modal-head">
               <div>
-                <div className="eyebrow">
-                  {editingVehicle || editingDriver
-                    ? "EDIT RECORD"
-                    : "CREATE RECORD"}
-                </div>
                 <h2>
                   {form === "vehicle"
                     ? editingVehicle
@@ -1378,7 +1352,7 @@ function ConnectedApp() {
                     </option>
                     {availableVehicles.map((item) => (
                       <option value={item.id} key={item.id}>
-                        {item.plate_number} · {item.vehicle_type}
+                        {item.plate_number} / {item.vehicle_type}
                       </option>
                     ))}
                   </select>
@@ -1461,7 +1435,6 @@ function Stat({
 function Status({ value }: { value: string }) {
   return (
     <span className={`status ${value.replaceAll("_", "-")}`}>
-      <span />
       {value.replaceAll("_", " ")}
     </span>
   );
@@ -1513,11 +1486,11 @@ function TripTable({
           <table>
             <thead>
               <tr>
-                <th>TRUCK / DRIVER</th>
-                <th>CUSTOMER & ROUTE</th>
-                <th>SCHEDULE</th>
-                <th>STATUS</th>
-                {onCancel && <th>ACTION</th>}
+                <th>Truck / Driver</th>
+                <th>Customer & route</th>
+                <th>Schedule</th>
+                <th>Status</th>
+                {onCancel && <th>Action</th>}
               </tr>
             </thead>
             <tbody>

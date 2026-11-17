@@ -293,7 +293,7 @@ export default function App() {
   if (!ready)
     return (
       <SafeAreaView style={s.center}>
-        <ActivityIndicator color="#e6a745" />
+        <ActivityIndicator color={colors.gold} />
         <Text style={s.muted}>Loading…</Text>
       </SafeAreaView>
     );
@@ -307,7 +307,7 @@ export default function App() {
       <StatusBar barStyle="light-content" />
       <View style={s.header}>
         <View>
-          <Text style={s.kicker}>HAULMARK / DRIVER</Text>
+          <Text style={s.kicker}>Haulmark Driver</Text>
           <Text style={s.headerTitle}>Hello, {name.split(" ")[0]}</Text>
         </View>
         <Pressable
@@ -336,6 +336,8 @@ export default function App() {
         <Pressable
           style={[s.tab, tab === "trip" && s.tabActive]}
           onPress={() => setTab("trip")}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === "trip" }}
         >
           <Text style={[s.tabText, tab === "trip" && s.tabTextActive]}>
             My trip
@@ -344,6 +346,8 @@ export default function App() {
         <Pressable
           style={[s.tab, tab === "attendance" && s.tabActive]}
           onPress={() => setTab("attendance")}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === "attendance" }}
         >
           <Text style={[s.tabText, tab === "attendance" && s.tabTextActive]}>
             Attendance
@@ -362,11 +366,11 @@ export default function App() {
           </View>
         ) : null}
         <Pressable onPress={() => void refresh()}>
-          <Text style={s.refresh}>↻ Refresh records</Text>
+          <Text style={s.refresh}>Refresh records</Text>
         </Pressable>
         {tab === "trip" ? (
           <>
-            <Text style={s.sectionLabel}>CURRENT ASSIGNMENT</Text>
+            <Text style={s.sectionLabel}>Current assignment</Text>
             {trip ? (
               <View style={s.card}>
                 <View style={s.row}>
@@ -374,24 +378,24 @@ export default function App() {
                     {trip.vehicles?.plate_number || "Assigned truck"}
                   </Text>
                   <Text style={s.badge}>
-                    {trip.status.replaceAll("_", " ").toUpperCase()}
+                    {trip.status.replaceAll("_", " ")}
                   </Text>
                 </View>
                 <Text style={s.customer}>{trip.customer_name}</Text>
                 <Text style={s.muted}>
-                  Pickup · {localTime(trip.scheduled_at)}
+                  Pickup: {localTime(trip.scheduled_at)}
                 </Text>
                 <View style={s.route}>
                   <View style={s.routeDot} />
                   <View style={s.routeText}>
-                    <Text style={s.routeLabel}>PICKUP</Text>
+                    <Text style={s.routeLabel}>Pickup</Text>
                     <Text style={s.routeAddress}>{trip.pickup_address}</Text>
                   </View>
                 </View>
                 <View style={s.route}>
-                  <View style={[s.routeDot, { backgroundColor: "#dda343" }]} />
+                  <View style={[s.routeDot, { backgroundColor: colors.gold }]} />
                   <View style={s.routeText}>
-                    <Text style={s.routeLabel}>DESTINATION</Text>
+                    <Text style={s.routeLabel}>Destination</Text>
                     <Text style={s.routeAddress}>
                       {trip.destination_address}
                     </Text>
@@ -418,7 +422,7 @@ export default function App() {
                 </Text>
               </View>
             )}
-            <Text style={s.sectionLabel}>LOCATION SHARING</Text>
+            <Text style={s.sectionLabel}>Location sharing</Text>
             <View style={s.card}>
               <View style={s.row}>
                 <Text style={s.cardTitle}>
@@ -440,12 +444,12 @@ export default function App() {
                 </Text>
               </Pressable>
             </View>
-            <Text style={s.sectionLabel}>RECENT TRIPS</Text>
+            <Text style={s.sectionLabel}>Recent trips</Text>
             {trips.slice(0, 5).map((item) => (
               <View style={s.compactCard} key={item.id}>
                 <Text style={s.cardTitle}>{item.customer_name}</Text>
                 <Text style={s.muted}>
-                  {item.destination_address} ·{" "}
+                  {item.destination_address} /{" "}
                   {item.status.replaceAll("_", " ")}
                 </Text>
               </View>
@@ -453,7 +457,7 @@ export default function App() {
           </>
         ) : (
           <>
-            <Text style={s.sectionLabel}>NEW ATTENDANCE</Text>
+            <Text style={s.sectionLabel}>New attendance</Text>
             <View style={s.card}>
               <Text style={s.cardTitle}>Photo check-in</Text>
               <Text style={s.muted}>
@@ -489,7 +493,7 @@ export default function App() {
               {position && (
                 <Text style={s.gps}>
                   GPS: {position.coords.latitude.toFixed(5)},{" "}
-                  {position.coords.longitude.toFixed(5)} · ±
+                  {position.coords.longitude.toFixed(5)} / ±
                   {Math.round(position.coords.accuracy ?? 0)}m
                 </Text>
               )}
@@ -505,7 +509,7 @@ export default function App() {
                 </Pressable>
               )}
             </View>
-            <Text style={s.sectionLabel}>RECENT RECORDS</Text>
+            <Text style={s.sectionLabel}>Recent records</Text>
             {entries.length === 0 ? (
               <View style={s.compactCard}>
                 <Text style={s.muted}>No attendance submitted yet.</Text>
@@ -530,7 +534,7 @@ export default function App() {
       </ScrollView>
       {busy && (
         <View style={s.busy}>
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={colors.surface} />
         </View>
       )}
     </SafeAreaView>
@@ -553,7 +557,7 @@ function SignIn() {
       <TextInput
         style={s.input}
         placeholder="Email address"
-        placeholderTextColor="#9fa9a3"
+        placeholderTextColor={colors.muted}
         autoCapitalize="none"
         keyboardType="email-address"
         autoComplete="email"
@@ -563,7 +567,7 @@ function SignIn() {
       <TextInput
         style={s.input}
         placeholder="Password"
-        placeholderTextColor="#9fa9a3"
+        placeholderTextColor={colors.muted}
         secureTextEntry
         value={password}
         onChangeText={setPassword}
@@ -589,94 +593,112 @@ function SignIn() {
   );
 }
 
+const colors = {
+  canvas: "#f3f5f3",
+  surface: "#ffffff",
+  line: "#dce3df",
+  ink: "#1d2928",
+  soft: "#50615f",
+  muted: "#657673",
+  pine: "#172c2c",
+  pineMuted: "#b9cbc5",
+  gold: "#e7ae45",
+  goldInk: "#22302d",
+  success: "#1d694c",
+  successBg: "#e7f4ec",
+  warning: "#8b570d",
+  warningBg: "#fff2d9",
+  danger: "#a43f32",
+  dangerBg: "#fff0ec",
+  scrim: "#172c2c77",
+} as const;
+
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#f5f6f2" },
+  safe: { flex: 1, backgroundColor: colors.canvas },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 28,
-    backgroundColor: "#f5f6f2",
+    backgroundColor: colors.canvas,
   },
   heading: {
     fontSize: 24,
     fontWeight: "700",
-    color: "#1d332a",
-    marginBottom: 9,
+    color: colors.ink,
+    marginBottom: 8,
   },
-  muted: { color: "#7d8a81", fontSize: 13, lineHeight: 20 },
+  muted: { color: colors.soft, fontSize: 13, lineHeight: 20 },
   header: {
-    backgroundColor: "#19332f",
-    paddingHorizontal: 22,
-    paddingTop: 25,
-    paddingBottom: 23,
+    backgroundColor: colors.pine,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 22,
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
   },
   kicker: {
-    color: "#d5a755",
-    fontWeight: "800",
-    letterSpacing: 2,
-    fontSize: 9,
-    marginBottom: 10,
+    color: colors.pineMuted,
+    fontWeight: "600",
+    fontSize: 12,
+    marginBottom: 8,
   },
   headerTitle: {
-    color: "#fff",
-    fontSize: 26,
-    fontWeight: "800",
-    letterSpacing: -1,
+    color: colors.surface,
+    fontSize: 25,
+    fontWeight: "700",
+    letterSpacing: -0.5,
   },
   headerAction: {
-    color: "#c8dbcf",
-    fontSize: 12,
-    fontWeight: "700",
+    color: colors.pineMuted,
+    fontSize: 13,
+    fontWeight: "600",
     padding: 8,
   },
   tabs: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surface,
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#e5ebe3",
+    borderBottomColor: colors.line,
   },
-  tab: { flex: 1, paddingVertical: 16, alignItems: "center" },
-  tabActive: { borderBottomColor: "#e4a744", borderBottomWidth: 3 },
-  tabText: { color: "#929e94", fontWeight: "700", fontSize: 13 },
-  tabTextActive: { color: "#1c392d" },
-  body: { padding: 19, paddingBottom: 50 },
+  tab: { flex: 1, paddingVertical: 15, alignItems: "center" },
+  tabActive: { borderBottomColor: colors.gold, borderBottomWidth: 2 },
+  tabText: { color: colors.muted, fontWeight: "600", fontSize: 14 },
+  tabTextActive: { color: colors.ink },
+  body: { padding: 18, paddingBottom: 48 },
   refresh: {
     textAlign: "right",
-    color: "#a36e31",
-    fontWeight: "700",
-    fontSize: 12,
+    color: colors.success,
+    fontWeight: "600",
+    fontSize: 13,
     marginBottom: 12,
   },
   sectionLabel: {
-    color: "#a17e48",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-    marginBottom: 10,
-    marginTop: 13,
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 12,
+    marginTop: 20,
   },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
     padding: 20,
-    marginBottom: 10,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#e7ede5",
+    borderColor: colors.line,
   },
   compactCard: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.surface,
     borderRadius: 10,
     padding: 16,
-    marginBottom: 9,
+    marginBottom: 8,
     borderWidth: 1,
-    borderColor: "#e7ede5",
+    borderColor: colors.line,
   },
   cardTitle: {
-    color: "#1c3028",
+    color: colors.ink,
     fontSize: 16,
     fontWeight: "700",
     textTransform: "capitalize",
@@ -688,154 +710,153 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   plate: {
-    color: "#1c3028",
-    fontSize: 22,
-    fontWeight: "800",
-    letterSpacing: -0.5,
+    color: colors.ink,
+    fontSize: 21,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   badge: {
-    color: "#a7742b",
-    backgroundColor: "#fff4dc",
-    borderRadius: 20,
+    color: colors.warning,
+    backgroundColor: colors.warningBg,
+    borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
     overflow: "hidden",
-    fontSize: 10,
-    fontWeight: "800",
+    fontSize: 11,
+    fontWeight: "600",
   },
-  smallBadge: { color: "#66806e", fontSize: 11, textTransform: "capitalize" },
+  smallBadge: { color: colors.success, fontSize: 11, textTransform: "capitalize" },
   customer: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#3a5141",
+    color: colors.ink,
     marginTop: 16,
     marginBottom: 4,
   },
   route: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 13,
-    marginTop: 20,
+    gap: 12,
+    marginTop: 18,
   },
   routeDot: {
     width: 10,
     height: 10,
-    backgroundColor: "#58a378",
+    backgroundColor: colors.success,
     borderRadius: 5,
     marginTop: 4,
   },
   routeText: { flex: 1 },
   routeLabel: {
-    color: "#9aa59a",
-    fontSize: 9,
-    letterSpacing: 1.5,
-    fontWeight: "800",
+    color: colors.soft,
+    fontSize: 12,
+    fontWeight: "600",
   },
   routeAddress: {
-    color: "#304238",
-    fontSize: 13,
+    color: colors.ink,
+    fontSize: 14,
     marginTop: 5,
     lineHeight: 19,
   },
   primaryButton: {
-    backgroundColor: "#e5a843",
-    borderRadius: 9,
-    padding: 15,
+    backgroundColor: colors.gold,
+    borderRadius: 8,
+    padding: 14,
     alignItems: "center",
     marginTop: 19,
   },
-  primaryText: { color: "#182d26", fontSize: 13, fontWeight: "800" },
+  primaryText: { color: colors.goldInk, fontSize: 14, fontWeight: "700" },
   outlineButton: {
-    borderColor: "#e3b962",
+    borderColor: colors.line,
     borderWidth: 1,
-    borderRadius: 9,
+    borderRadius: 8,
     padding: 14,
     alignItems: "center",
     marginTop: 18,
   },
-  outlineText: { color: "#98682e", fontSize: 13, fontWeight: "800" },
-  stopButton: { borderColor: "#e2b7a8" },
-  stopText: { color: "#b8614a" },
+  outlineText: { color: colors.ink, fontSize: 14, fontWeight: "600" },
+  stopButton: { borderColor: colors.line },
+  stopText: { color: colors.danger },
   indicator: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#aab7aa",
+    backgroundColor: colors.muted,
   },
-  indicatorOn: { backgroundColor: "#55a977" },
-  kindGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 17 },
+  indicatorOn: { backgroundColor: colors.success },
+  kindGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 },
   kind: {
     borderRadius: 7,
     borderWidth: 1,
-    borderColor: "#dce6d9",
-    paddingHorizontal: 11,
-    paddingVertical: 9,
+    borderColor: colors.line,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
-  kindSelected: { backgroundColor: "#204134", borderColor: "#204134" },
-  kindText: { color: "#5d7061", fontSize: 11, fontWeight: "700" },
-  kindTextSelected: { color: "#fff" },
+  kindSelected: { backgroundColor: colors.pine, borderColor: colors.pine },
+  kindText: { color: colors.soft, fontSize: 12, fontWeight: "600" },
+  kindTextSelected: { color: colors.surface },
   preview: { width: "100%", height: 220, borderRadius: 9, marginTop: 15 },
-  gps: { color: "#647a6e", fontSize: 11, marginTop: 12 },
+  gps: { color: colors.soft, fontSize: 12, marginTop: 12 },
   error: {
-    backgroundColor: "#fff0eb",
+    backgroundColor: colors.dangerBg,
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
   },
-  errorText: { color: "#a64d34", fontSize: 12, lineHeight: 18 },
+  errorText: { color: colors.danger, fontSize: 13, lineHeight: 20 },
   success: {
-    backgroundColor: "#e6f4e9",
+    backgroundColor: colors.successBg,
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
   },
-  successText: { color: "#3d7850", fontSize: 12 },
+  successText: { color: colors.success, fontSize: 13 },
   busy: {
     position: "absolute",
     inset: 0,
-    backgroundColor: "#1a322777",
+    backgroundColor: colors.scrim,
     alignItems: "center",
     justifyContent: "center",
   },
   login: {
     flex: 1,
-    backgroundColor: "#19332f",
+    backgroundColor: colors.pine,
     paddingHorizontal: 28,
     justifyContent: "center",
   },
   loginBrand: {
-    fontSize: 36,
-    fontWeight: "900",
-    color: "#e8ad4d",
+    fontSize: 34,
+    fontWeight: "800",
+    color: colors.gold,
     marginBottom: 38,
   },
   loginTitle: {
-    color: "#fff",
-    fontSize: 36,
-    fontWeight: "800",
-    letterSpacing: -1.7,
+    color: colors.surface,
+    fontSize: 34,
+    fontWeight: "700",
+    letterSpacing: -1,
     lineHeight: 40,
     marginBottom: 12,
   },
   loginDetail: {
-    color: "#b4c8b9",
-    fontSize: 14,
+    color: colors.pineMuted,
+    fontSize: 15,
     lineHeight: 21,
     marginBottom: 37,
   },
   input: {
-    backgroundColor: "#fff",
-    color: "#23372e",
-    borderRadius: 9,
+    backgroundColor: colors.surface,
+    color: colors.ink,
+    borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 14,
     marginBottom: 12,
-    fontSize: 14,
+    fontSize: 15,
   },
   loginFoot: {
-    color: "#8fa99b",
+    color: colors.pineMuted,
     textAlign: "center",
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 20,
   },
 });
